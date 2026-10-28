@@ -347,6 +347,10 @@ async def main():
     for protocol_name in protocol_names:
         proxies = categorized[protocol_name]
 
+        # each protocol gets its own subfolder: output/all/, output/http/, ...
+        protocol_dir = output_dir / protocol_name
+        protocol_dir.mkdir(exist_ok=True)
+
         for fmt in output_formats:
             content = ""
             if fmt == "json":
@@ -357,9 +361,9 @@ async def main():
                 content = proxies_to_csv(proxies)
 
             if content:
-                out_path = output_dir / f"{protocol_name}.{fmt}"
+                out_path = protocol_dir / f"{protocol_name}.{fmt}"
                 out_path.write_text(content, encoding="utf-8")
-                print(f"   ✓ {fmt.upper()}: {protocol_name}.all.{fmt}")
+                print(f"   ✓ {fmt.upper()}: {protocol_name}/{protocol_name}.{fmt}")
 
     print(f"\n✅ Pipeline completed!")
 
