@@ -1,0 +1,60 @@
+{
+  "sources": [
+      {
+        "name": "ercin-http",
+        "type": "txt",
+        "url": "https://raw.githubusercontent.com/ErcinDedeoglu/proxies/main/proxies/http.txt",
+        "format": null,
+        "protocols": ["http"]
+      },
+      {
+        "name": "ercin-https",
+        "type": "txt",
+        "url": "https://raw.githubusercontent.com/ErcinDedeoglu/proxies/main/proxies/https.txt",
+        "format": null,
+        "protocols": ["https"]
+      },
+      {
+        "name": "ercin-socks5",
+        "type": "txt",
+        "url": "https://raw.githubusercontent.com/ErcinDedeoglu/proxies/main/proxies/socks5.txt",
+        "format": null,
+        "protocols": ["socks5"]
+      },
+      {
+        "name": "ercin-socks4",
+        "type": "txt",
+        "url": "https://raw.githubusercontent.com/ErcinDedeoglu/proxies/main/proxies/socks4.txt",
+        "format": null,
+        "protocols": ["socks4"]
+      },
+      {
+        "name": "monosans-txt",
+        "type": "txt",
+        "url": "https://raw.githubusercontent.com/monosans/proxy-list/main/proxies/all.txt",
+        "format": null,
+        "protocols": null
+      },
+      {
+        "name": "monosans-json",
+        "type": "json",
+        "url": "https://raw.githubusercontent.com/monosans/proxy-list/main/proxies_pretty.json",
+        "format": "protocol",
+        "protocols": null
+      }
+    ],
+  "output_formats": [
+    "json",
+    "txt",
+    "csv"
+  ],
+  "output_dir": "output",
+  "dedup_strategy": "content",
+  "min_response_time": 0.1,
+  "protocols_to_include": [
+    "http",
+    "https",
+    "socks4",
+    "socks5"
+  ]
+}
