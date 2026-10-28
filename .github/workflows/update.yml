@@ -20,6 +20,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -34,12 +36,36 @@ jobs:
 
       - name: Commit and push updated lists
         run: |
+          set -e
           git config user.name "Delta-Kronecker"
           git config user.email "diracdeltain0@gmail.com"
-          git add output/
+
+          git add -A output/
           if git diff --cached --quiet; then
             echo "No changes to commit"
-          else
-            git commit -m "Auto-update proxy lists $(date -u +'%Y-%m-%d')"
-            git push
+            exit 0
           fi
+
+          git commit -m "Auto-update proxy lists $(date -u +'%Y-%m-%d')"
+
+          # retry with rebase: another commit may have landed meanwhile
+          for i in 1 2 3 4 5; do
+            if git push origin HEAD:master; then
+              echo "pushed on attempt $i"
+              exit 0
+            fi
+            echo "push attempt $i failed, rebasing on remote"
+            git fetch origin master
+            if ! git rebase origin/master; then
+              echo "rebase conflict: re-running collector on top of remote"
+              git rebase --abort || true
+              git reset --hard origin/master
+              python main.py
+              git add -A output/
+              git commit -m "Auto-update proxy lists $(date -u +'%Y-%m-%d')"
+            fi
+            sleep 5
+          done
+
+          echo "push failed after retries"
+          exit 1
