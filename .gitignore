@@ -1,3 +1,9 @@
+# secrets
+.env
+
+# temp/data
 data/
 *.log
 __pycache__/
+*.pyc
+.venv/
