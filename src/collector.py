@@ -57,14 +57,17 @@ def parse_proxy_str(proxy_str: str) -> Optional[Proxy]:
     if not proxy_str:
         return None
 
-    # Detect protocol (http, https, socks4, socks5)
+    # Detect protocol (http, https, socks4, socks5, socks)
     protocol = "http"
-    if proxy_str.startswith(("socks5://", "socks4://", "socks5h://", "socks4h://", "socks5:", "socks4:")):
-        proto_match = re.match(r'(?:https?://|socks4://|socks5://|socks4h://|socks5h://)?(.+)', proxy_str)
-        if proto_match:
-            protocol = proxy_str.split("://")[0].lower() if "://" in proxy_str else "http"
+    known_protocols = ("http", "https", "socks", "socks4", "socks4h",
+                       "socks5", "socks5h")
+    if "://" in proxy_str:
+        scheme = proxy_str.split("://", 1)[0].lower()
+        if scheme in known_protocols:
+            protocol = "socks5" if scheme == "socks" else scheme
+        else:
+            return None
     else:
-        protocol = "http"
         proxy_str = f"http://{proxy_str}"
 
     content = proxy_str.split("://", 1)[1]
