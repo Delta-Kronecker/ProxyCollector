@@ -260,6 +260,39 @@ def proxies_to_txt(proxies: List[Proxy]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def proxies_to_uri(proxies: List[Proxy], socks_scheme: str = "socks") -> str:
+    """Plain proxy-URI lines, one per proxy.
+
+    SOCKS proxies are emitted with a generic ``socks://`` scheme and the
+    credential is a single token (``user@``) when there is no password::
+
+        socks://Og@127.0.0.1:9050
+        socks://user:pass@10.0.0.1:1080
+        http://1.2.3.4:8080
+    """
+    lines = []
+    for proxy in proxies:
+        protocol = proxy.protocol.lower()
+        if protocol in ("socks4", "socks5"):
+            scheme = socks_scheme
+        else:
+            scheme = proxy.scheme or protocol
+
+        if proxy.auth:
+            user = proxy.auth.get("username") or ""
+            password = proxy.auth.get("password") or ""
+            if not user and not password:
+                lines.append(f"{scheme}://{proxy.host}:{proxy.port}")
+            elif password:
+                lines.append(f"{scheme}://{user}:{password}@{proxy.host}:{proxy.port}")
+            else:
+                lines.append(f"{scheme}://{user}@{proxy.host}:{proxy.port}")
+        else:
+            lines.append(f"{scheme}://{proxy.host}:{proxy.port}")
+
+    return "\n".join(lines) + ("\n" if lines else "")
+
+
 def proxies_to_json(proxies: List[Proxy]) -> str:
     """Convert proxies to JSON format."""
     data = [proxy.to_dict() for proxy in proxies]
@@ -393,6 +426,21 @@ async def main():
                 out_path = protocol_dir / f"{protocol_name}.{fmt}"
                 out_path.write_text(content, encoding="utf-8")
                 print(f"   ✓ {fmt.upper()}: {protocol_name}/{protocol_name}.{fmt}")
+
+    # ── plain proxy-URI export (socks://user@host:port) ──────────────────
+    uri_cfg = config.get("uri_output", {})
+    if uri_cfg.get("enabled", True):
+        uri_dir = output_dir / uri_cfg.get("dir", "uri")
+        uri_dir.mkdir(exist_ok=True)
+        socks_scheme = uri_cfg.get("socks_scheme", "socks")
+
+        print(f"\n🧾 Saving proxy-URI files to {uri_dir}/")
+        for protocol_name in protocol_names:
+            content = proxies_to_uri(categorized[protocol_name], socks_scheme)
+            out_path = uri_dir / f"{protocol_name}.txt"
+            out_path.write_text(content, encoding="utf-8")
+            count = content.count("\n")
+            print(f"   ✓ URI: {uri_dir.name}/{protocol_name}.txt ({count} lines)")
 
     print(f"\n✅ Pipeline completed!")
 

@@ -49,6 +49,11 @@
     "csv"
   ],
   "output_dir": "output",
+  "uri_output": {
+    "enabled": true,
+    "dir": "uri",
+    "socks_scheme": "socks"
+  },
   "dedup_strategy": "content",
   "min_response_time": 0.1,
   "protocols_to_include": [

@@ -43,20 +43,35 @@ All outputs are stored in `output/` folder, categorized by protocol:
 
 ```
 output/
-├── all.    # All protocols combined
-│   ├── all.json
-│   ├── all.txt
-│   └── all.csv
-├── http.   # HTTP proxies
-│   ├── http.json
-│   ├── http.txt
-│   └── http.csv
-├── https.  # HTTPS proxies
-│   └── ...
-├── socks4. # SOCKS4 proxies
-│   └── ...
-└── socks5. # SOCKS5 proxies
-    └── ...
+├── all/     # All protocols combined: all.json, all.txt, all.csv
+├── http/    # HTTP only
+├── https/   # HTTPS only
+├── socks4/  # SOCKS4 only
+├── socks5/  # SOCKS5 only
+└── uri/     # plain proxy URIs, one per line
+    ├── all.txt
+    ├── http.txt
+    ├── https.txt
+    ├── socks4.txt
+    └── socks5.txt
+```
+
+### URI format (`output/uri/`)
+
+Every SOCKS proxy is written with the generic `socks://` scheme, and the
+credential is a single token when no password is present:
+
+```
+socks://Og@127.0.0.1:9050
+socks://1.2.3.4:1080
+socks://user:pass@10.0.0.1:1080
+http://1.2.3.4:8080
+```
+
+Adjust it in `config.json`:
+
+```json
+"uri_output": { "enabled": true, "dir": "uri", "socks_scheme": "socks" }
 ```
 
 ### Format Details

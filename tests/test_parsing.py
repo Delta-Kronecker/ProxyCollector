@@ -8,7 +8,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.collector import (  # noqa: E402
-    parse_proxy_str, proxies_to_txt, categorize_proxies, deduplicate_proxies,
+    parse_proxy_str, proxies_to_txt, proxies_to_uri, categorize_proxies,
+    deduplicate_proxies,
 )
 
 CASES = [
@@ -77,9 +78,27 @@ def main() -> int:
     else:
         print("ok   category: socks:// -> socks5 bucket, deduped with socks5://")
 
+    # URI export: socks proxies use the generic socks:// scheme,
+    # single-token credential when there is no password
+    uri_socks_user = proxies_to_uri([parse_proxy_str("socks://Og@127.0.0.1:9050")]).strip()
+    uri_socks_plain = proxies_to_uri([parse_proxy_str("socks5://1.2.3.4:1080")]).strip()
+    uri_socks_pass = proxies_to_uri([parse_proxy_str("socks5://u:p@1.2.3.4:1080")]).strip()
+    uri_http = proxies_to_uri([parse_proxy_str("http://1.2.3.4:8080")]).strip()
+    expected = [
+        (uri_socks_user, "socks://Og@127.0.0.1:9050"),
+        (uri_socks_plain, "socks://1.2.3.4:1080"),
+        (uri_socks_pass, "socks://u:p@1.2.3.4:1080"),
+        (uri_http, "http://1.2.3.4:8080"),
+    ]
+    for got, want in expected:
+        if got != want:
+            print(f"FAIL uri: {got!r} != {want!r}")
+            failures += 1
+        else:
+            print(f"ok   uri: {got}")
+
     print(f"\n{'FAILED' if failures else 'PASSED'} ({failures} failure(s))")
     return 1 if failures else 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())
