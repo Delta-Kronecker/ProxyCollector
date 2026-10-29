@@ -6,9 +6,10 @@ Automated proxy aggregation, deduplication, and export pipeline.
 
 - 🔄 **Multi-source collection** from proven sources (Ercin, Monosans)
 - 🧹 **Deduplication** based on (protocol, host, port)
-- 📁 **Categorization** by protocol
+- 📁 **Categorization** by protocol (HTTP, HTTPS, SOCKS4, SOCKS5)
 - 📊 **Multiple formats**: JSON, TXT, CSV
 - ✨ **Async fetcher** with configurable timeout & retries
+- 🎯 **Protocol flexibility**: supports `socks://` format (aliased to `socks5://`)
 
 ## Supported Sources
 
@@ -79,6 +80,7 @@ output/
 #### TXT
 ```
 http://1.2.3.4:8080
+socks://user:pass@5.6.7.8:1080  # Aliased to socks5
 socks5://user:pass@5.6.7.8:1080
 ```
 

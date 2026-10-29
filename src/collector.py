@@ -34,10 +34,12 @@ class Proxy:
     exit_ip: Optional[str] = None
     response_time: Optional[float] = None
     country: Optional[str] = None
+    scheme: Optional[str] = None   # original scheme as it appeared in the source
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "protocol": self.protocol,
+            "scheme": self.scheme or self.protocol,
             "host": self.host,
             "port": self.port,
             "auth": self.auth,
@@ -52,49 +54,63 @@ class Proxy:
 
 
 def parse_proxy_str(proxy_str: str) -> Optional[Proxy]:
-    """Parse HTTP/SOCKS proxy string including auth"""
+    """Parse HTTP/SOCKS proxy string including auth.
+
+    Accepted schemes: http, https, socks, socks4, socks4h, socks5, socks5h.
+    A bare ``socks://`` is treated as SOCKS5 for categorisation, but the
+    original scheme is preserved in ``Proxy.scheme`` so output files keep
+    the exact form found in the source.
+    """
     proxy_str = proxy_str.strip()
-    if not proxy_str:
+    if not proxy_str or proxy_str.startswith("#"):
         return None
 
-    # Detect protocol (http, https, socks4, socks5, socks)
-    protocol = "http"
     known_protocols = ("http", "https", "socks", "socks4", "socks4h",
                        "socks5", "socks5h")
+
     if "://" in proxy_str:
-        scheme = proxy_str.split("://", 1)[0].lower()
-        if scheme in known_protocols:
-            protocol = "socks5" if scheme == "socks" else scheme
-        else:
+        scheme = proxy_str.split("://", 1)[0].strip().lower()
+        if scheme not in known_protocols:
             return None
+        raw_scheme = scheme
     else:
+        raw_scheme = "http"
         proxy_str = f"http://{proxy_str}"
+
+    # normalise for the category bucket
+    if raw_scheme == "socks":
+        protocol = "socks5"
+    elif raw_scheme in ("socks5h", "socks4h"):
+        protocol = raw_scheme[:-1]  # socks5h -> socks5, socks4h -> socks4
+    else:
+        protocol = raw_scheme
 
     content = proxy_str.split("://", 1)[1]
 
-    # Extract auth if present
+    # Extract auth if present ("user@host:port" or "user:pass@host:port")
     auth_info = None
     if "@" in content:
-        auth_part, rest_part = content.rsplit("@", maxsplit=1)
+        auth_part, content = content.rsplit("@", maxsplit=1)
         if ":" in auth_part:
+            # could be user:pass or IPv6-ish user; passwords may contain ':'
             user, password = auth_part.split(":", 1)
             auth_info = {"username": user, "password": password}
-        content = rest_part
-    else:
-        content = content
+        elif auth_part:
+            auth_info = {"username": auth_part, "password": ""}
 
-    # Extract host and port
-    m = re.search(r'^([^:]+):(\d+)$', content.strip())
+    # Extract host and port (support IPv6 like [::1]:1080)
+    m = re.search(r'^\[([^]]+)\]:(\d+)$|^([^:]+):(\d+)$', content.strip())
     if not m:
         return None
 
-    host = m.group(1)
-    port = int(m.group(2))
+    host = m.group(1) or m.group(3)
+    port = int(m.group(2) or m.group(4))
 
     if not host or not re.match(r'^[\da-fA-F.:]+$', host):
         return None
 
-    return Proxy(protocol=protocol, host=host, port=port, auth=auth_info)
+    return Proxy(protocol=protocol, host=host, port=port,
+                 auth=auth_info, scheme=raw_scheme)
 
 
 async def fetch_proxies_from_urls(urls: List[str], source_type: str = "mixed") -> List[Proxy]:
@@ -153,7 +169,8 @@ async def _parse_json_proxies(content: str) -> List[Proxy]:
                 proxy = Proxy(
                     protocol=item.get("protocol", "http"),
                     host=item.get("host"),
-                    port=item.get("port")
+                    port=item.get("port"),
+                    scheme=item.get("scheme")
                 )
 
                 auth = item.get("auth")
@@ -225,13 +242,21 @@ def categorize_proxies(proxies: List[Proxy]) -> Dict[str, List[Proxy]]:
 
 
 def proxies_to_txt(proxies: List[Proxy]) -> str:
-    """Convert proxies to plain text format."""
+    """Convert proxies to plain text format.
+
+    Keeps the original scheme from the source (e.g. ``socks://`` stays
+    ``socks://``), so mixed-scheme feeds round-trip unchanged.
+    """
     lines = []
     for proxy in proxies:
+        scheme = proxy.scheme or proxy.protocol
         if proxy.auth:
-            lines.append(f"{proxy.protocol}://{proxy.auth['username']}:{proxy.auth['password']}@{proxy.host}:{proxy.port}")
+            user = proxy.auth.get("username") or ""
+            password = proxy.auth.get("password") or ""
+            cred = f"{user}:{password}" if password else user
+            lines.append(f"{scheme}://{cred}@{proxy.host}:{proxy.port}")
         else:
-            lines.append(f"{proxy.protocol}://{proxy.host}:{proxy.port}")
+            lines.append(f"{scheme}://{proxy.host}:{proxy.port}")
     return "\n".join(lines) + "\n"
 
 
@@ -246,7 +271,7 @@ def proxies_to_csv(proxies: List[Proxy]) -> str:
     output = StringIO()
     writer = csv.writer(output, quoting=csv.QUOTE_MINIMAL)
 
-    header = ["protocol", "host", "port", "username", "password",
+    header = ["protocol", "scheme", "host", "port", "username", "password",
               "timeout", "exit_ip", "response_time", "country"]
     writer.writerow(header)
 
@@ -256,6 +281,7 @@ def proxies_to_csv(proxies: List[Proxy]) -> str:
 
         writer.writerow([
             proxy.protocol,
+            proxy.scheme or proxy.protocol,
             proxy.host,
             proxy.port,
             auth_user,
