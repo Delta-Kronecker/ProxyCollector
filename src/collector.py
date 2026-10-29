@@ -406,6 +406,9 @@ async def main():
     # Save files grouped by protocol
     protocol_names = ["all", "http", "https", "socks4", "socks5"]
 
+    uri_cfg = config.get("uri_output", {})
+    socks_scheme = uri_cfg.get("socks_scheme", "socks")
+
     for protocol_name in protocol_names:
         proxies = categorized[protocol_name]
 
@@ -427,7 +430,7 @@ async def main():
                 out_path.write_text(content, encoding="utf-8")
                 print(f"   ✓ {fmt.upper()}: {protocol_name}/{protocol_name}.{fmt}")
 
-    # ── plain proxy-URI export (socks://user@host:port) ──────────────────
+    # ── extra export: plain proxy URIs (socks://user@host:port) ──────────
     uri_cfg = config.get("uri_output", {})
     if uri_cfg.get("enabled", True):
         uri_dir = output_dir / uri_cfg.get("dir", "uri")
@@ -439,8 +442,8 @@ async def main():
             content = proxies_to_uri(categorized[protocol_name], socks_scheme)
             out_path = uri_dir / f"{protocol_name}.txt"
             out_path.write_text(content, encoding="utf-8")
-            count = content.count("\n")
-            print(f"   ✓ URI: {uri_dir.name}/{protocol_name}.txt ({count} lines)")
+            print(f"   ✓ URI: {uri_dir.name}/{protocol_name}.txt "
+                  f"({content.count(chr(10))} lines)")
 
     print(f"\n✅ Pipeline completed!")
 
